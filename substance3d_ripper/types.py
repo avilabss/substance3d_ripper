@@ -77,3 +77,45 @@ class Collection(BaseModel):
     @classmethod
     def from_dict(cls, data: dict):
         return cls.model_validate(data)
+
+
+class Flags(BaseModel):
+    unmeteredPointsRemainderExtensionWindow: str | None = None
+    typename: str = Field(alias="__typename")
+
+
+class UserInfoMini(BaseModel):
+    id: str
+    name: str
+    avatarUrl: str
+    role: str
+    organizations: list[str]
+    type: str
+    languages: list[str] | None = None
+    onBehalfOf: str
+    flags: Flags
+    typename: str = Field(alias="__typename")
+
+
+class AccountLicense(BaseModel):
+    status: str
+    expirationDate: str | None = None
+    typename: str = Field(alias="__typename")
+
+
+class Account(BaseModel):
+    assetIds: list[str]
+    points: int
+    licenses: dict[
+        str, AccountLicense | str
+    ]  # e.g., {"unlimited": AccountLicense, "standard": AccountLicense, "premium": AccountLicense}
+    typename: str = Field(alias="__typename")
+
+
+class UserQueryResponse(BaseModel):
+    user: UserInfoMini
+    account: Account
+
+    @classmethod
+    def from_dict(cls, data: dict):
+        return cls.model_validate(data.get("data", {}))

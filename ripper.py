@@ -48,21 +48,27 @@ def main():
 
     print(f"Logged in as: {session_info.displayName} ({session_info.email})")
 
-    result = ripper.get_collection(collection_id=args.collection_id)
-    print(f"Collection retrieved: {result.title} (ID: {result.id})")
+    collection = ripper.get_collection(collection_id=args.collection_id)
+    print(f"Collection retrieved: {collection.title} (ID: {collection.id})")
 
-    for item in result.assets.items:
+    for item in collection.assets.items:
         print(f"Asset: {item.title} (ID: {item.id})")
         for attachment in item.attachments:
             if attachment.typename == "DownloadAttachment":
                 print(f"Downloading asset: {attachment.label} from {attachment.url}")
                 ripper.download_asset(
-                    attachment.url, sub_dir=f"{result.title}/{item.title}"
+                    asset_item_id=item.id,
+                    asset_url=attachment.url,
+                    sub_dir=f"{collection.title}/{item.title}",
                 )
 
                 delay = random.randint(args.delay_min, args.delay_max)
                 print(f"Waiting for {delay} seconds before next request...")
                 time.sleep(delay)
+
+    print(
+        f"All assets downloaded successfully for collection: {collection.title} (ID: {collection.id})"
+    )
 
 
 if __name__ == "__main__":

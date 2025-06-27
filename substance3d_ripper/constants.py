@@ -63,3 +63,59 @@ fragment AssetFragment on Asset {
   createdAt
   __typename
 }"""
+
+PURCHASE_ASSET_QUERY = """mutation PurchaseAsset($assetId: String!) {
+  purchaseAsset(assetId: $assetId) {
+    points
+    assetIds
+    __typename
+  }
+}"""
+
+USER_QUERY = """query User {
+  user {
+    id
+    name
+    avatarUrl
+    role
+    organizations {
+      id
+      name
+      avatarUrl
+      role
+      __typename
+    }
+    type
+    languages
+    onBehalfOf
+    flags {
+      unmeteredPointsRemainderExtensionWindow
+      __typename
+    }
+    __typename
+  }
+  account {
+    assetIds
+    points
+    licenses {
+      unlimited {
+        status
+        expirationDate
+        __typename
+      }
+      standard {
+        status
+        expirationDate
+        __typename
+      }
+      premium {
+        status
+        expirationDate
+        __typename
+      }
+      __typename
+    }
+    __typename
+  }
+}
+"""

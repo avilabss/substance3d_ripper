@@ -2,18 +2,26 @@ import os
 import time
 import httpx
 
-from .constants import COLLECTION_QUERY
-from .types import UserInfo, Collection
+from httpx_retries import RetryTransport, Retry
+
+from .constants import COLLECTION_QUERY, PURCHASE_ASSET_QUERY, USER_QUERY
+from .types import UserInfo, Collection, UserQueryResponse
 
 
 class Substance3DRipper:
     def __init__(self, ims_sid: str, output_dir: str = "substance3d_ripper_output"):
-        self.session = httpx.Client(follow_redirects=True, timeout=30.0)
+        self.retry = Retry(total=5, backoff_factor=0.5)
+        self.transport = RetryTransport(retry=self.retry)
+        self.session = httpx.Client(
+            follow_redirects=True, timeout=120, transport=self.transport
+        )
         self.session.headers.update(self._get_default_headers())
         self.session.cookies.set("ims_sid", ims_sid)
 
         self.access_token = None
         self.output_dir = output_dir
+        self.graphql_endpoint = "https://source-api.substance3d.com/beta/graphql"
+        self.purchased_asset_ids = []
 
         self._ensure_output_dir()
 
@@ -75,14 +83,19 @@ class Substance3DRipper:
             raise ValueError(
                 "Failed to retrieve access token with user ID. Please check your IMS session ID."
             )
+
+        user_purchases = self._get_user_purchases()
+        self.purchased_asset_ids.extend(user_purchases.account.assetIds)
+
         return user_info_2
 
     def get_collection(
         self, collection_id: str, limit: int = 60, page: int = 0
     ) -> Collection:
-        url = "https://source-api.substance3d.com/beta/graphql"
+        url = self.graphql_endpoint
         headers = {
             "Content-Type": "application/json",
+            "Authorization": f"Bearer {self.access_token}",
         }
 
         payload = {
@@ -107,7 +120,43 @@ class Substance3DRipper:
         collection = Collection.from_dict(collection_dict)
         return collection
 
-    def download_asset(
+    def _get_user_purchases(self) -> UserQueryResponse:
+        url = self.graphql_endpoint
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self.access_token}",
+        }
+        payload = {
+            "operationName": "User",
+            "variables": {"buyer": "all"},
+            "query": USER_QUERY,
+        }
+
+        response = self.session.post(url, headers=headers, json=payload)
+        self.handle_error(response)
+        data = response.json()
+        return UserQueryResponse.from_dict(data)
+
+    def _purchase_asset(self, asset_id: str) -> list[str]:
+        url = self.graphql_endpoint
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {self.access_token}",
+        }
+        payload = {
+            "operationName": "PurchaseAsset",
+            "variables": {"assetId": asset_id},
+            "query": PURCHASE_ASSET_QUERY,
+        }
+        response = self.session.post(url, headers=headers, json=payload)
+        self.handle_error(response)
+        data = response.json()
+        purchased_asset_ids = (
+            data.get("data", {}).get("purchaseAsset", {}).get("assetIds", [])
+        )
+        return purchased_asset_ids
+
+    def _download_asset(
         self, asset_url: str, sub_dir: str = "", filename: str = None
     ) -> None:
         url = f"{asset_url}?accessToken={self.access_token}"
@@ -127,3 +176,15 @@ class Substance3DRipper:
         os.makedirs(os.path.dirname(file_path), exist_ok=True)
         with open(file_path, "wb") as file:
             file.write(response.content)
+
+    def download_asset(
+        self,
+        asset_item_id: str,
+        asset_url: str,
+        sub_dir: str = "",
+        filename: str = None,
+    ) -> None:
+        if asset_item_id not in self.purchased_asset_ids:
+            self.purchased_asset_ids = self._purchase_asset(asset_id=asset_item_id)
+
+        self._download_asset(asset_url, sub_dir, filename)
