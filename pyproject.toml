@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "substance3d-ripper"
+version = "0.1.0"
+description = ""
+authors = ["avilabss <contact@avilabs.net>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+httpx = "^0.28.1"
+pydantic = "^2.11.7"
+
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.12.1"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
