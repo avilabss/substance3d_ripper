@@ -7,13 +7,13 @@ from .types import UserInfo, Collection
 
 
 class Substance3DRipper:
-    def __init__(self, ims_sid: str):
+    def __init__(self, ims_sid: str, output_dir: str = "substance3d_ripper_output"):
         self.session = httpx.Client(follow_redirects=True, timeout=30.0)
         self.session.headers.update(self._get_default_headers())
         self.session.cookies.set("ims_sid", ims_sid)
 
         self.access_token = None
-        self.output_dir = "substance3d_ripper_output"
+        self.output_dir = output_dir
 
         self._ensure_output_dir()
 
@@ -107,7 +107,9 @@ class Substance3DRipper:
         collection = Collection.from_dict(collection_dict)
         return collection
 
-    def download_asset(self, asset_url: str, filename: str = None) -> None:
+    def download_asset(
+        self, asset_url: str, sub_dir: str = "", filename: str = None
+    ) -> None:
         url = f"{asset_url}?accessToken={self.access_token}"
 
         response = self.session.get(url)
@@ -121,6 +123,7 @@ class Substance3DRipper:
         )
         use_filename = filename if filename else original_filename
 
-        file_path = os.path.join(self.output_dir, use_filename)
+        file_path = os.path.join(self.output_dir, sub_dir, use_filename)
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
         with open(file_path, "wb") as file:
             file.write(response.content)

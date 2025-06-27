@@ -1,4 +1,6 @@
 import argparse
+import time
+import random
 
 from substance3d_ripper import Substance3DRipper
 
@@ -17,12 +19,31 @@ def parse_args():
         required=True,
         help="ID of the collection to retrieve",
     )
+    parser.add_argument(
+        "--output_dir",
+        type=str,
+        default="substance3d_ripper_output",
+        help="Directory to save downloaded assets (default: 'substance3d_ripper_output')",
+    )
+    parser.add_argument(
+        "--delay-min",
+        type=int,
+        default=1,
+        help="Minimum delay between requests in seconds (default: 1)",
+    )
+    parser.add_argument(
+        "--delay-max",
+        type=int,
+        default=3,
+        help="Maximum delay between requests in seconds (default: 3)",
+    )
+
     return parser.parse_args()
 
 
 def main():
     args = parse_args()
-    ripper = Substance3DRipper(ims_sid=args.ims_sid)
+    ripper = Substance3DRipper(ims_sid=args.ims_sid, output_dir=args.output_dir)
     session_info = ripper.gen_session()
 
     print(f"Logged in as: {session_info.displayName} ({session_info.email})")
@@ -30,12 +51,18 @@ def main():
     result = ripper.get_collection(collection_id=args.collection_id)
     print(f"Collection retrieved: {result.title} (ID: {result.id})")
 
-    download_item = result.assets.items[0]
+    for item in result.assets.items:
+        print(f"Asset: {item.title} (ID: {item.id})")
+        for attachment in item.attachments:
+            if attachment.typename == "DownloadAttachment":
+                print(f"Downloading asset: {attachment.label} from {attachment.url}")
+                ripper.download_asset(
+                    attachment.url, sub_dir=f"{result.title}/{item.title}"
+                )
 
-    for attachment in download_item.attachments:
-        if attachment.typename == "DownloadAttachment":
-            print(f"Downloading asset: {attachment.label} from {attachment.url}")
-            ripper.download_asset(attachment.url)
+                delay = random.randint(args.delay_min, args.delay_max)
+                print(f"Waiting for {delay} seconds before next request...")
+                time.sleep(delay)
 
 
 if __name__ == "__main__":
