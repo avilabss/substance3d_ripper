@@ -48,10 +48,21 @@ def main():
 
     print(f"Logged in as: {session_info.displayName} ({session_info.email})")
 
-    collection = ripper.get_collection(collection_id=args.collection_id)
-    print(f"Collection retrieved: {collection.title} (ID: {collection.id})")
+    items_merged = []
+    page = 0
 
-    for item in collection.assets.items:
+    hasMore = True
+    while hasMore is True:
+        collection = ripper.get_collection(collection_id=args.collection_id, page=page)
+        items_merged.extend(collection.assets.items)
+        hasMore = collection.assets.hasMore
+        page += 1
+
+    print(
+        f"Collection retrieved: {collection.title} (ID: {collection.id}) | Collected {len(items_merged)} of {collection.assets.total} items."
+    )
+
+    for item in items_merged:
         print(f"Asset: {item.title} (ID: {item.id})")
         for attachment in item.attachments:
             if attachment.typename == "DownloadAttachment":
