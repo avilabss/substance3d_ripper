@@ -1,7 +1,7 @@
 # Python
 __pycache__
 .venv
-,ruff_cache
+.ruff_cache
 
 # Dirs
 substance3d_ripper_output
